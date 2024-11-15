@@ -5,23 +5,29 @@ extern crate alloc;
 
 use alloc::vec;
 use embassy_executor::Spawner;
-use embassy_futures::join::join4;
+use embassy_futures::join::join3;
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use esp_backtrace as _;
 use esp_hal::{
+    cpu_control::{CpuControl, Stack},
     dma::{Dma, DmaPriority},
-    gpio::Io,
+    gpio::{Io, Level, Output},
     i2s::{asynch::I2sWriteDmaAsync, I2sTx},
+    otg_fs::Usb,
     timer::timg::TimerGroup,
 };
+use esp_hal_embassy::Executor;
 use esp_println::println;
+use static_cell::StaticCell;
 use synth::{
     i2s,
     input::{produce_midi_on_analog_input_change, AnalogInputBuilder, AnalogInputConfig},
-    midi::{sequencer::produce_midi_for_note_sequence, MIDI_EVENTS},
+    midi::{sequencer::sequencer, usb::handle_usb, MIDI_EVENTS},
     synth::SimpleVoice,
 };
+
+static APP_CORE_STACK: StaticCell<Stack<8192>> = StaticCell::new();
 
 #[esp_hal_embassy::main]
 async fn main(_spawner: Spawner) {
@@ -32,6 +38,9 @@ async fn main(_spawner: Spawner) {
 
     println!("Booting Rust Synth");
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
+    let mut led1 = Output::new(io.pins.gpio47, Level::High);
+    let mut led2 = Output::new(io.pins.gpio48, Level::High);
+
     // I2S =============================
     // Set up DMA (direct memory access) buffers.
     let dma = Dma::new(peripherals.DMA);
@@ -52,6 +61,11 @@ async fn main(_spawner: Spawner) {
     let tx_buffer = i2s::take_tx_buffer();
     let mut transfer = i2s_tx.write_dma_circular_async(tx_buffer).unwrap();
 
+    // USB MIDI =============================
+    // Define the USB peripheral and the D+ and D- pins
+    // GPIO19 and GPIO20 are connected to the second USB-C connector
+    let usb = Usb::new(peripherals.USB0, io.pins.gpio20, io.pins.gpio19);
+
     // ANALOG INPUTS ========================
     let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(AnalogInputConfig {
         alpha: 0.8,
@@ -71,27 +85,33 @@ async fn main(_spawner: Spawner) {
     );
 
     // SEQUENCER ============================
-    // A melody encoded as MIDI note keys.
-    // The numbers 0 to 87 correspond the 88 keys of a piano
     let melody = vec![
         36, 39, 41, 43, 46, 48, 43, 39, 36, 34, 31, 29, 27, 31, 33, 36,
     ];
-    // time between two successive "note on" events
-    let beat_duration = Duration::from_millis(300);
-    // time betwen a "note on" and following "note off" event
-    let note_duration = Duration::from_millis(300);
 
-    let seq_fut = produce_midi_for_note_sequence(&melody, beat_duration, note_duration);
+    // Spin up the second (APP) core with the `handle_usb` task
+    let mut cpu_control = CpuControl::new(peripherals.CPU_CTRL);
+    let _guard = cpu_control
+        .start_app_core(APP_CORE_STACK.init(Stack::new()), move || {
+            static EXECUTOR: StaticCell<Executor> = StaticCell::new();
+            let executor = EXECUTOR.init(Executor::new());
+            executor.run(|spawner| {
+                spawner.spawn(handle_usb(usb)).ok();
+                spawner
+                    .spawn(sequencer(
+                        melody,
+                        Duration::from_millis(300),
+                        Duration::from_millis(150),
+                    ))
+                    .ok();
+            });
+        })
+        .unwrap();
 
     // GEN =============================
-    // `synth` is a generator that will produce a new sample every time we make a call to
-    // `.generate()`.
-    // Because it is shared between multiple tasks, i.e. the generator task and midi event handling
-    // task, we have to shield it from concurrent use with a mutex.
-    let synth = Mutex::<NoopRawMutex, _>::new(SimpleVoice::new());
+    let synth = SimpleVoice::new();
+    let synth = Mutex::<NoopRawMutex, _>::new(synth);
 
-    // This task calls the `.handle_midi` method of `synth` when it receives a new event on
-    // `MIDI_EVENTS`.
     let midi_fut = async {
         loop {
             let event = MIDI_EVENTS.receive().await;
@@ -99,13 +119,14 @@ async fn main(_spawner: Spawner) {
         }
     };
 
-    // This tasks does the most of the heavy lifting. It fills `buffer` with new samples by calling
-    // `synth.generate()` and then pushes as many samples as possible to the i2s DMA.
     let gen_fut = async {
         // Initialize a buffer to generate samples into before writing them to the DMA channel
         let mut buffer = i2s::new_chunk_buffer();
         let mut start = 0;
         loop {
+            led1.set_high();
+            led2.set_low();
+
             for sample in &mut buffer[start..] {
                 let mut synth = synth.lock().await;
                 let a = synth.generate();
@@ -113,6 +134,9 @@ async fn main(_spawner: Spawner) {
                 *sample = [b, b];
                 drop(synth);
             }
+
+            led1.set_low();
+            led2.set_high();
 
             // W: written, S: skipped
             // [ W W W W W W W W W W W W W W W W S S S S ]
@@ -126,6 +150,5 @@ async fn main(_spawner: Spawner) {
         }
     };
 
-    // All futures need to be awaited in order for the tasks to run.
-    join4(midi_fut, gen_fut, analog_fut, seq_fut).await;
+    join3(midi_fut, gen_fut, analog_fut).await;
 }

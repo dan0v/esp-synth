@@ -1,0 +1,51 @@
+[package]
+name    = "synth"
+version = "0.1.0"
+authors = ["Lukas Engelke <lukas.engelke@tngtech.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+esp-backtrace   = { version = "0.14.2", features = ["esp32s3", "exception-handler", "panic-handler", "println"] }
+esp-hal         = { version = "0.21", features = ["esp32s3", "log"] }
+esp-hal-embassy = { version = "0.4.0", features = ["esp32s3"] }
+esp-println     = { version = "0.12.0", features = ["esp32s3", "log"] }
+esp-alloc       = { version = "0.5.0" }
+esp-wifi        = { version = "0.10.1", features = ["esp32s3", "ble", "async"] }
+
+embassy-executor = { version = "0.6", features = ["task-arena-size-12288"] }
+embassy-futures  = "0.1.1"
+embassy-time     = { version = "0.3.2", default-features = false, features = ["generic-queue"] }
+embassy-sync     = "0.6.0"
+embassy-usb      = "0.3.0"
+
+embedded-hal       = "1.0.0"
+embedded-hal-async = "1.0.0"
+embedded-io-async  = "0.6.1"
+
+# bleps       = { git = "https://github.com/bjoernQ/bleps", package = "bleps", rev = "a5148d8ae679e021b78f53fd33afb8bb35d0b62e", features = ["macros", "async"] }
+smoltcp     = { version = "0.11.0", default-features = false, features = ["medium-ethernet", "socket-raw", "proto-ipv4"] }
+log         = { version = "0.4.21" }
+cfg-if      = "1.0.0"
+micromath   = "2.1.0"
+static_cell = { version = "2.1.0", features = ["nightly"] }
+bytemuck    = "1.18.0"
+ws2812-spi  = "0.5.0"
+smart-leds  = "0.4.0"
+midi-msg    = { version = "0.7.3", default-features = false }
+rand_core   = "0.6.4"
+rand_xorshift = "0.3.0"
+
+[profile.dev]
+# Rust debug is too slow.
+# For debug builds always builds with some optimization
+opt-level = "s"
+
+[profile.release]
+codegen-units    = 1     # LLVM can perform better optimizations using a single thread
+debug            = 2
+debug-assertions = false
+incremental      = false
+lto              = 'fat'
+opt-level        = 's'
+overflow-checks  = false

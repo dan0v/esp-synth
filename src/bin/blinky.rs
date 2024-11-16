@@ -31,12 +31,12 @@ async fn main(_spawner: Spawner) {
     let mut ws = Ws2812::new(spi);
 
     loop {
-        println!("on");
         Timer::after(Duration::from_millis(500)).await;
+        println!("on");
         ws.write([RGB8 { r: 255, g: 0, b: 0 }].into_iter()).unwrap();
 
-        println!("off");
         Timer::after(Duration::from_millis(500)).await;
+        println!("off");
         ws.write([RGB8 { r: 0, g: 0, b: 0 }].into_iter()).unwrap();
     }
 }

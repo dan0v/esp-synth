@@ -20,14 +20,15 @@ async fn main(_spawner: Spawner) {
     let peripherals = esp_hal::init(esp_hal::Config::default());
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_hal_embassy::init(timg0.timer0);
-
-    println!("Booting Rust Synth");
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
 
-    // Make sure to bridge the solder pads labelled RGB next to the LED
+    // We're using the serial port interface (SPI) to control the on-board addressable LED. The SPI
+    // is normally used to send data between a computer and its peripherals. Due to the SPI's ability
+    // to send arbitrary bit streams, it can be used to implement other protocols by so-called
+    // bit-banging, such as the addressable LED protocol.
+    // Make sure the solder pads labelled RGB next to the LED are bridged
     let spi: Spi<'_, SPI2, _> =
         Spi::new(peripherals.SPI2, 2.MHz(), SpiMode::Mode0).with_mosi(io.pins.gpio48);
-
     let mut ws = Ws2812::new(spi);
 
     loop {

@@ -79,7 +79,7 @@ impl Filter for BiquadLowPassFilter {
 }
 
 pub struct SimpleLowPassFilter {
-    z1: f32,
+    z1: f32, // system state from one time step previously
     a: f32,
     b: f32,
 }

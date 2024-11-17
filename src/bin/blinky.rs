@@ -17,9 +17,12 @@ use ws2812_spi::Ws2812;
 
 #[esp_hal_embassy::main]
 async fn main(_spawner: Spawner) {
+    // Initialize the system (set frequency, setup interrupts, etc.)
     let peripherals = esp_hal::init(esp_hal::Config::default());
+    // Initialize the embassy runtime (embassy is the async framework we're using)
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_hal_embassy::init(timg0.timer0);
+    // Initialize the IO driver
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
 
     // We're using the serial port interface (SPI) to control the on-board addressable LED. The SPI

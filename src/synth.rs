@@ -1,20 +1,20 @@
-use helpers::{linear_map, log_map};
-use midi_msg::{Channel, ControlChange, MidiMsg};
-
 use crate::{
     envelope::{ADSREnvelope, Envelope},
     filters::{traits::Filterable, BiquadLowPassFilter, Mixer},
     oscillators::{
-        scales::{self, *},
-        traits::{Generator, Oscillator},
+        scales::{freq, notes},
+        traits::Oscillator,
         Noise, PWMOscillator, SawToothOscillator,
     },
 };
+#[allow(unused_imports)]
+use helpers::{linear_map, log_map};
+use midi_msg::{Channel, ChannelVoiceMsg, ControlChange, MidiMsg};
 
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec, vec::Vec};
 
-    osc: Box<[Box<dyn Oscillator<Out = f32>>]>,
 pub struct Voice {
+    osc: Vec<Box<dyn Oscillator<Out = f32>>>,
     env: ADSREnvelope,
     lp: BiquadLowPassFilter,
     note: Option<u8>,
@@ -23,13 +23,12 @@ pub struct Voice {
 impl Voice {
     pub fn new() -> Self {
         Self {
-            osc: Box::new([
-                // Box::new(PWMOscillator::new(scales::REFERENCE_FREQ)),
-                // Box::new(PWMOscillator::new(scales::REFERENCE_FREQ / 2.)),
-                Box::new(SawToothOscillator::new(scales::REFERENCE_FREQ)),
+            osc: vec![
+                Box::new(SawToothOscillator::new(freq(notes::A4))),
+                Box::new(SawToothOscillator::new(freq(notes::A4))),
+                Box::new(SawToothOscillator::new(freq(notes::A3))),
                 Box::new(Noise::new(0xBAD_5EED)),
-                // Box::new(SawToothOscillator::new(scales::REFERENCE_FREQ / 2.)),
-            ]),
+            ],
             env: ADSREnvelope::new(0.01, 0.01, 0.6, 0.2),
             lp: BiquadLowPassFilter::new(),
             note: None,

@@ -13,7 +13,11 @@ use esp_hal::{
 use esp_println::println;
 use synth::{
     i2s,
-    oscillators::{scales::REFERENCE_FREQ, traits::Generator, SineOscillator},
+    oscillators::{
+        scales::REFERENCE_FREQ,
+        traits::{Generator, Oscillator},
+        *,
+    },
 };
 
 #[esp_hal_embassy::main]

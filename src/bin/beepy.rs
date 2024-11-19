@@ -7,8 +7,7 @@ use embassy_executor::Spawner;
 use esp_backtrace as _;
 use esp_hal::{
     dma::{Dma, DmaPriority},
-    gpio::Io,
-    i2s::{asynch::I2sWriteDmaAsync, I2sTx},
+    gpio::{ GpioPin, Io},i2s::{asynch::I2sWriteDmaAsync, I2sTx},
     timer::timg::TimerGroup,
 };
 use esp_println::println;
@@ -39,9 +38,9 @@ async fn main(_spawner: Spawner) {
     // The channel is used to control data flow to the DMA transaction
     let i2s_tx: I2sTx<_, _> = i2s
         .i2s_tx
-        .with_bclk(io.pins.gpio35)
-        .with_dout(io.pins.gpio36)
-        .with_ws(io.pins.gpio37)
+        .with_bclk(todo!("Please choose a GPIO pin to use here, such as io.pins.gpio0)!") as GpioPin<0>)  // Connect to BCK on PCM5102A DAC
+        .with_dout(todo!("Please choose a GPIO pin to use here, such as io.pins.gpio0!") as GpioPin<0>)  // Connect to DIN on PCM5102A DAC
+        .with_ws(todo!("Please choose a GPIO pin to use here, such as io.pins.gpio0!") as GpioPin<0>)    // Connect to LCK on PCM5102A DAC
         .build();
 
     let tx_buffer = i2s::take_tx_buffer();

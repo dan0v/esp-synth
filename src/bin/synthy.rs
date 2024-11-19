@@ -122,7 +122,7 @@ async fn main(_spawner: Spawner) {
             // [ S S S S _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ]
             //           ^ start
             buffer.rotate_left(written);
-            start = (buffer.len() - written) % buffer.len();
+            start = buffer.len() - written;
         }
     };
 

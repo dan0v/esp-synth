@@ -17,7 +17,7 @@ pub struct PhaseGenerator {
     phi: f32,  // current phase
     dphi: f32, // phase increment
 
-    /// set frequency, range = (0, inf)
+    /// nominal frequency, range = (0, inf)
     f_set: f32,
     /// reference frequency, range = (0, inf), default = scales::REFERENCE_FREQ
     f_ref: f32,
@@ -30,10 +30,11 @@ impl PhaseGenerator {
     ///
     /// `f_ref` reference frequency (default = `scales::REFERENCE_FREQ`)
     pub fn new(f_ref: f32) -> Self {
+        let f_set = REFERENCE_FREQ;
         PhaseGenerator {
             phi: 0.0,
-            dphi: 0.0,
-            f_set: REFERENCE_FREQ,
+            dphi: phase_increment(f_set, f_ref, 1.0),
+            f_set,
             f_ref,
             tune: 1.0,
         }

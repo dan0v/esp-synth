@@ -53,16 +53,18 @@ async fn main(_spawner: Spawner) {
     let mut transfer = i2s_tx.write_dma_circular_async(tx_buffer).unwrap();
 
     // ANALOG INPUTS ========================
-    let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(AnalogInputConfig {
+    // This takes care of producing MIDI events when a potentiometer is turned
+    let analog_input_config = AnalogInputConfig {
         alpha: 0.8,
         trigger_threshold: 16,
         sustain_threshold: 8,
-    })
-    .add(io.pins.gpio7, 18)
-    .add(io.pins.gpio6, 19)
-    .add(io.pins.gpio5, 20)
-    .add(io.pins.gpio4, 21)
-    .build(peripherals.ADC1);
+    };
+    let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(analog_input_config)
+        .add(io.pins.gpio7, 18)
+        .add(io.pins.gpio6, 19)
+        .add(io.pins.gpio5, 20)
+        .add(io.pins.gpio4, 21)
+        .build(peripherals.ADC1);
 
     let analog_fut = produce_midi_on_analog_input_change(
         &mut adc,

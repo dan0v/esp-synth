@@ -20,7 +20,7 @@ use synth::{
     i2s,
     input::{produce_midi_on_analog_input_change, AnalogInputBuilder, AnalogInputConfig},
     midi::{sequencer::produce_midi_for_note_sequence, MIDI_EVENTS},
-    synth::SimpleVoice,
+    synth::Voice,
 };
 
 #[esp_hal_embassy::main]
@@ -88,7 +88,7 @@ async fn main(_spawner: Spawner) {
     // `.generate()`.
     // Because it is shared between multiple tasks, i.e. the generator task and midi event handling
     // task, we have to shield it from concurrent use with a mutex.
-    let synth = Mutex::<NoopRawMutex, _>::new(SimpleVoice::new());
+    let synth = Mutex::<NoopRawMutex, _>::new(Voice::new());
 
     // This task calls the `.handle_midi` method of `synth` when it receives a new event on
     // `MIDI_EVENTS`.

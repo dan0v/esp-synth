@@ -13,14 +13,14 @@ use crate::{
 
 use alloc::boxed::Box;
 
-pub struct SimpleVoice {
     osc: Box<[Box<dyn Oscillator<Out = f32>>]>,
+pub struct Voice {
     env: ADSREnvelope,
     lp: BiquadLowPassFilter,
     note: Option<u8>,
 }
 
-impl SimpleVoice {
+impl Voice {
     pub fn new() -> Self {
         Self {
             osc: Box::new([

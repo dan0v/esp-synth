@@ -51,21 +51,29 @@ impl Voice {
         } = msg
         {
             match msg {
-                midi_msg::ChannelVoiceMsg::NoteOn { note, velocity } => {
-                    self.note = Some(note);
-                    self.osc.iter_mut().for_each(|o| o.set_note(note));
-                    self.env.note_on(note, velocity)
+                ChannelVoiceMsg::NoteOn { note, velocity } => {
+                    self.handle_note_on(note, velocity);
                 }
-                midi_msg::ChannelVoiceMsg::NoteOff { note, velocity } => {
-                    self.note = None;
-                    self.env.note_off(note, velocity);
+                ChannelVoiceMsg::NoteOff { note, velocity } => {
+                    self.handle_note_off(note, velocity);
                 }
-                midi_msg::ChannelVoiceMsg::ControlChange { control } => {
+                ChannelVoiceMsg::ControlChange { control } => {
                     self.handle_control_change(control);
                 }
                 _ => {}
             }
         }
+    }
+
+    fn handle_note_on(&mut self, note: u8, velocity: u8) {
+        self.note = Some(note);
+        self.osc.iter_mut().for_each(|o| o.set_note(note));
+        self.env.note_on(note, velocity)
+    }
+
+    fn handle_note_off(&mut self, note: u8, velocity: u8) {
+        self.note = None;
+        self.env.note_off(note, velocity);
     }
 
     fn handle_control_change(&mut self, cc: ControlChange) {

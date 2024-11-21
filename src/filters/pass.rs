@@ -8,48 +8,57 @@ use core::f32::consts::TAU;
 /// Generic filter in Direct Form II
 ///
 /// Generic parameter is Order + 1
-pub struct DF2Filter<const N: usize> {
-    a: [f32; N],
-    b: [f32; N],
-    v: [f32; N],
+#[derive(Debug)]
+pub struct DF2Filter {
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a1: f32,
+    a2: f32,
+    z1: f32,
+    z2: f32,
 }
 
-impl<const N: usize> DF2Filter<N> {
-    pub const ORDER: usize = N - 1;
-
-    pub fn new(a: [f32; N], b: [f32; N]) -> Self {
-        DF2Filter { a, b, v: [0.; N] }
+impl DF2Filter {
+    pub fn new(a: [f32; 3], b: [f32; 3]) -> Self {
+        DF2Filter {
+            b0: b[0] / a[0],
+            b1: b[1] / a[0],
+            b2: b[2] / a[0],
+            a1: a[1] / a[0],
+            a2: a[2] / a[0],
+            z1: 0.,
+            z2: 0.,
+        }
     }
 
-    pub fn set_coefficients(&mut self, a: [f32; N], b: [f32; N]) {
-        self.b = b.map(|x| x / a[0]);
-        self.a = a.map(|x| x / a[0]);
+    pub fn set_coefficients(&mut self, a: [f32; 3], b: [f32; 3]) {
+        self.b0 = b[0] / a[0];
+        self.b1 = b[1] / a[0];
+        self.b2 = b[2] / a[0];
+        self.a1 = a[1] / a[0];
+        self.a2 = a[2] / a[0];
+        self.z1 = 0.;
+        self.z2 = 0.;
     }
 }
 
-impl<const N: usize> Filter for DF2Filter<N> {
+impl Filter for DF2Filter {
     type In = f32;
     type Out = f32;
 
     fn filter(&mut self, x: Self::In) -> Self::Out {
-        let mut v0 = self.b[0] * x;
-        for i in 1..N {
-            v0 -= self.a[i] * self.v[i];
-            self.v[i] = self.v[i - 1];
-        }
-        self.v[0] = v0;
+        let y = self.b0 * x - self.a1 * self.z1 - self.a2 * self.z2;
+        self.z2 = self.z1;
+        self.z1 = y;
 
-        let mut y = v0;
-        for i in 1..N {
-            y += self.b[i] * self.v[i];
-        }
-        y
+        y + self.b1 * self.z1 + self.b2 * self.z2
     }
 }
 
 // https://pytorch.org/audio/main/_modules/torchaudio/functional/filtering.html#lowpass_biquad
 pub struct BiquadLowPassFilter {
-    df2: DF2Filter<3>,
+    df2: DF2Filter,
     cutoff_freq: f32,
     q: f32,
 }
@@ -105,7 +114,7 @@ impl Filter for BiquadLowPassFilter {
 
 // https://pytorch.org/audio/main/_modules/torchaudio/functional/filtering.html#highpass_biquad
 pub struct BiquadHighPassFilter {
-    df2: DF2Filter<3>,
+    df2: DF2Filter,
     cutoff_freq: f32,
     q: f32,
 }
@@ -158,4 +167,3 @@ impl Filter for BiquadHighPassFilter {
         self.df2.filter(x)
     }
 }
-

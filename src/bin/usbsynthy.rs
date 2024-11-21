@@ -24,7 +24,7 @@ use synth::{
     i2s,
     input::{produce_midi_on_analog_input_change, AnalogInputBuilder, AnalogInputConfig},
     midi::{sequencer::sequencer, usb::handle_usb, MIDI_EVENTS},
-    synth::Voice,
+    voice::Voice,
 };
 
 static APP_CORE_STACK: StaticCell<Stack<8192>> = StaticCell::new();
@@ -109,13 +109,12 @@ async fn main(_spawner: Spawner) {
         .unwrap();
 
     // GEN =============================
-    let synth = Voice::new();
-    let synth = Mutex::<NoopRawMutex, _>::new(synth);
+    let voice = Mutex::<NoopRawMutex, _>::new(Voice::new());
 
     let midi_fut = async {
         loop {
             let event = MIDI_EVENTS.receive().await;
-            synth.lock().await.handle_midi(event);
+            voice.lock().await.handle_midi(event);
         }
     };
 
@@ -128,11 +127,11 @@ async fn main(_spawner: Spawner) {
             led2.set_low();
 
             for sample in &mut buffer[start..] {
-                let mut synth = synth.lock().await;
-                let a = synth.generate();
+                let mut voice = voice.lock().await;
+                let a = voice.generate();
                 let b = (a * i16::MAX as f32) as i16 / 2;
                 *sample = [b, b];
-                drop(synth);
+                drop(voice);
             }
 
             led1.set_low();

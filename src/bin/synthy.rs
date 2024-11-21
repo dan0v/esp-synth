@@ -20,7 +20,7 @@ use synth::{
     i2s,
     input::{produce_midi_on_analog_input_change, AnalogInputBuilder, AnalogInputConfig},
     midi::{sequencer::produce_midi_for_note_sequence, MIDI_EVENTS},
-    synth::Voice,
+    voice::Voice,
 };
 
 #[esp_hal_embassy::main]
@@ -86,18 +86,18 @@ async fn main(_spawner: Spawner) {
     let seq_fut = produce_midi_for_note_sequence(&melody, beat_duration, note_duration);
 
     // GEN =============================
-    // `synth` is a generator that will produce a new sample every time we make a call to
+    // `voice` is a generator that will produce a new sample every time we make a call to
     // `.generate()`.
     // Because it is shared between multiple tasks, i.e. the generator task and midi event handling
     // task, we have to shield it from concurrent use with a mutex.
-    let synth = Mutex::<NoopRawMutex, _>::new(Voice::new());
+    let voice = Mutex::<NoopRawMutex, _>::new(Voice::new());
 
     // This task calls the `.handle_midi` method of `synth` when it receives a new event on
     // `MIDI_EVENTS`.
     let midi_fut = async {
         loop {
             let event = MIDI_EVENTS.receive().await;
-            synth.lock().await.handle_midi(event);
+            voice.lock().await.handle_midi(event);
         }
     };
 
@@ -109,18 +109,18 @@ async fn main(_spawner: Spawner) {
         let mut start = 0;
         loop {
             for sample in &mut buffer[start..] {
-                let mut synth = synth.lock().await;
-                let a = synth.generate();
+                let mut voice = voice.lock().await;
+                let a = voice.generate();
                 let b = (a * i16::MAX as f32) as i16 / 2;
                 *sample = [b, b];
-                drop(synth);
+                drop(voice);
             }
 
             // W: written, S: skipped
             // [ W W W W W W W W W W W W W W W W S S S S ]
             //                                   ^ written
             let written = i2s::push(&mut transfer, &buffer).await;
-    
+
             // [ S S S S _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ]
             //           ^ start
             buffer.rotate_left(written);

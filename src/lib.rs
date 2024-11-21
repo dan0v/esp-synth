@@ -9,6 +9,6 @@ pub mod envelope;
 pub mod filters;
 pub mod i2s;
 pub mod oscillators;
-pub mod synth;
+pub mod voice;
 pub mod midi;
 pub mod input;

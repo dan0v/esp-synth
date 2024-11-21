@@ -5,7 +5,7 @@ extern crate alloc;
 
 use alloc::vec;
 use embassy_executor::Spawner;
-use embassy_futures::join::join4;
+use embassy_futures::join;
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use esp_backtrace as _;
@@ -79,7 +79,7 @@ async fn main(_spawner: Spawner) {
         36, 39, 41, 43, 46, 48, 43, 39, 36, 34, 31, 29, 27, 31, 33, 36,
     ];
     // time between two successive "note on" events
-    let beat_duration = Duration::from_millis(500);
+    let beat_duration = Duration::from_millis(200);
     // time betwen a "note on" and following "note off" event
     let note_duration = Duration::from_millis(100);
 
@@ -120,7 +120,7 @@ async fn main(_spawner: Spawner) {
             // [ W W W W W W W W W W W W W W W W S S S S ]
             //                                   ^ written
             let written = i2s::push(&mut transfer, &buffer).await;
-
+    
             // [ S S S S _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ]
             //           ^ start
             buffer.rotate_left(written);
@@ -129,5 +129,6 @@ async fn main(_spawner: Spawner) {
     };
 
     // All futures need to be awaited in order for the tasks to run.
-    join4(midi_fut, gen_fut, analog_fut, seq_fut).await;
+    join::join4(midi_fut, gen_fut, analog_fut, seq_fut).await;
+    // join::join3(seq_fut, midi_fut, gen_fut).await;
 }

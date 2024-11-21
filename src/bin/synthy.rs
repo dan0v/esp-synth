@@ -20,7 +20,7 @@ use synth::{
     i2s,
     input::{produce_midi_on_analog_input_change, AnalogInputBuilder, AnalogInputConfig},
     midi::{sequencer::produce_midi_for_note_sequence, MIDI_EVENTS},
-    synth::Voice,
+    voice::Voice,
 };
 
 #[esp_hal_embassy::main]

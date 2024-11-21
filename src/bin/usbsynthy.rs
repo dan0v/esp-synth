@@ -24,7 +24,7 @@ use synth::{
     i2s,
     input::{produce_midi_on_analog_input_change, AnalogInputBuilder, AnalogInputConfig},
     midi::{sequencer::sequencer, usb::handle_usb, MIDI_EVENTS},
-    synth::Voice,
+    voice::Voice,
 };
 
 static APP_CORE_STACK: StaticCell<Stack<8192>> = StaticCell::new();

@@ -41,13 +41,11 @@ impl Voice {
 
     pub fn generate(&mut self) -> f32 {
         let osc_output = self.osc.iter_mut().map(|o| o.generate()).sum::<f32>();
-        // let env_output = self.env.filter(osc_output);
-        let lp_output = self.lp.filter(osc_output);
-        lp_output
-        // let hp_output = self.hp.filter(env_output);
-        // // println!("{} {} {} {}", osc_output, env_output, lp_output, hp_output);
-        //
-        // 0.5 * (lp_output + hp_output)
+        let env_output = self.env.filter(osc_output);
+        let lp_output = self.lp.filter(env_output);
+        let hp_output = self.hp.filter(lp_output);
+
+        hp_output
     }
 
     pub fn handle_midi(&mut self, msg: MidiMsg) {

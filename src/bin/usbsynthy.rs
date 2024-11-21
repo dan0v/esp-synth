@@ -24,7 +24,7 @@ use synth::{
     i2s,
     input::{produce_midi_on_analog_input_change, AnalogInputBuilder, AnalogInputConfig},
     midi::{sequencer::sequencer, usb::handle_usb, MIDI_EVENTS},
-    synth::SimpleVoice,
+    synth::Voice,
 };
 
 static APP_CORE_STACK: StaticCell<Stack<8192>> = StaticCell::new();
@@ -109,7 +109,7 @@ async fn main(_spawner: Spawner) {
         .unwrap();
 
     // GEN =============================
-    let synth = SimpleVoice::new();
+    let synth = Voice::new();
     let synth = Mutex::<NoopRawMutex, _>::new(synth);
 
     let midi_fut = async {
@@ -146,7 +146,7 @@ async fn main(_spawner: Spawner) {
             // [ S S S S _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ]
             //           ^ start
             buffer.rotate_left(written);
-            start = (buffer.len() - written) % buffer.len();
+            start = buffer.len() - written;
         }
     };
 

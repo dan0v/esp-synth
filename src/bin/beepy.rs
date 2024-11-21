@@ -7,13 +7,14 @@ use embassy_executor::Spawner;
 use esp_backtrace as _;
 use esp_hal::{
     dma::{Dma, DmaPriority},
-    gpio::{ GpioPin, Io},i2s::{asynch::I2sWriteDmaAsync, I2sTx},
+    gpio::{GpioPin, Io},
+    i2s::{asynch::I2sWriteDmaAsync, I2sTx},
     timer::timg::TimerGroup,
 };
 use esp_println::println;
 use synth::{
     i2s,
-    oscillators::{scales::REFERENCE_FREQ, traits::Generator, SineOscillator},
+    oscillators::{scales::REFERENCE_FREQ, traits::Generator, *},
 };
 
 #[esp_hal_embassy::main]
@@ -38,9 +39,9 @@ async fn main(_spawner: Spawner) {
     // The channel is used to control data flow to the DMA transaction
     let i2s_tx: I2sTx<_, _> = i2s
         .i2s_tx
-        .with_bclk(todo!("Please choose a GPIO pin to use here, such as io.pins.gpio0)!") as GpioPin<0>)  // Connect to BCK on PCM5102A DAC
-        .with_dout(todo!("Please choose a GPIO pin to use here, such as io.pins.gpio0!") as GpioPin<0>)  // Connect to DIN on PCM5102A DAC
-        .with_ws(todo!("Please choose a GPIO pin to use here, such as io.pins.gpio0!") as GpioPin<0>)    // Connect to LCK on PCM5102A DAC
+        .with_bclk(todo!("choose a GPIO pin, such as io.pins.gpio0)!") as GpioPin<0>) // Connect to BCK on PCM5102A DAC
+        .with_dout(todo!("choose a GPIO pin, such as io.pins.gpio0!") as GpioPin<0>) // Connect to DIN on PCM5102A DAC
+        .with_ws(todo!("choose a GPIO pin, such as io.pins.gpio0!") as GpioPin<0>) // Connect to LCK on PCM5102A DAC
         .build();
 
     let tx_buffer = i2s::take_tx_buffer();
@@ -67,6 +68,6 @@ async fn main(_spawner: Spawner) {
         // [ S S S S _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ]
         //           ^ start
         buffer.rotate_left(written);
-        start = (buffer.len() - written) % buffer.len();
+        start = buffer.len() - written;
     }
 }

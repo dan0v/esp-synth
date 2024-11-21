@@ -6,7 +6,6 @@ use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::{
     gpio::Io,
-    peripherals::SPI2,
     prelude::*,
     spi::{master::Spi, SpiMode},
     timer::timg::TimerGroup,
@@ -17,9 +16,12 @@ use ws2812_spi::Ws2812;
 
 #[esp_hal_embassy::main]
 async fn main(_spawner: Spawner) {
+    // Initialize the system (set frequency, setup interrupts, etc.)
     let peripherals = esp_hal::init(esp_hal::Config::default());
+    // Initialize the embassy runtime (embassy is the async framework we're using)
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_hal_embassy::init(timg0.timer0);
+    // Initialize the IO driver
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
 
     // We're using the serial port interface (SPI) to control the on-board addressable LED. The SPI
@@ -27,8 +29,7 @@ async fn main(_spawner: Spawner) {
     // to send arbitrary bit streams, it can be used to implement other protocols by so-called
     // bit-banging, such as the addressable LED protocol.
     // Make sure the solder pads labelled RGB next to the LED are bridged
-    let spi: Spi<'_, SPI2, _> =
-        Spi::new(peripherals.SPI2, 2.MHz(), SpiMode::Mode0).with_mosi(io.pins.gpio48);
+    let spi = Spi::new(peripherals.SPI2, 2.MHz(), SpiMode::Mode0).with_mosi(io.pins.gpio48);
     let mut ws = Ws2812::new(spi);
 
     loop {

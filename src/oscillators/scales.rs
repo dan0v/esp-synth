@@ -1,13 +1,20 @@
 pub const HALF_TONE_FACTOR: f32 = 1.05946309436; // 2^(1/12)
 pub const REFERENCE_FREQ: f32 = 440.0;
 
-pub const NOTE_A3: u8 = 37;
-pub const NOTE_A4: u8 = 49;
-pub const NOTE_A5: u8 = 61;
+pub mod notes {
+    pub const A0: u8 = 1;
+    pub const A1: u8 = 13;
+    pub const A2: u8 = 25;
+    pub const A3: u8 = 37;
+    pub const A4: u8 = 49;
+    pub const A5: u8 = 61;
+    pub const A6: u8 = 73;
+    pub const A7: u8 = 85;
+}
 
 const fn create_tempered_scale(pitch: f32) -> [f32; 88] {
     let mut scale = [0.0; 88];
-    let i0 = NOTE_A4 as usize;
+    let i0 = notes::A4 as usize;
     scale[i0] = pitch;
     let mut i = i0;
     while i < scale.len() - 1 {

@@ -5,7 +5,7 @@ extern crate alloc;
 
 use alloc::vec;
 use embassy_executor::Spawner;
-use embassy_futures::join::join4;
+use embassy_futures::join;
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::Duration;
 use esp_backtrace as _;
@@ -20,7 +20,7 @@ use synth::{
     i2s,
     input::{produce_midi_on_analog_input_change, AnalogInputBuilder, AnalogInputConfig},
     midi::{sequencer::produce_midi_for_note_sequence, MIDI_EVENTS},
-    synth::SimpleVoice,
+    synth::Voice,
 };
 
 #[esp_hal_embassy::main]
@@ -53,16 +53,18 @@ async fn main(_spawner: Spawner) {
     let mut transfer = i2s_tx.write_dma_circular_async(tx_buffer).unwrap();
 
     // ANALOG INPUTS ========================
-    let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(AnalogInputConfig {
+    // This takes care of producing MIDI events when a potentiometer is turned
+    let analog_input_config = AnalogInputConfig {
         alpha: 0.8,
         trigger_threshold: 16,
         sustain_threshold: 8,
-    })
-    .add(io.pins.gpio7, 18)
-    .add(io.pins.gpio6, 19)
-    .add(io.pins.gpio5, 20)
-    .add(io.pins.gpio4, 21)
-    .build(peripherals.ADC1);
+    };
+    let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(analog_input_config)
+        .add(io.pins.gpio7, 14)
+        .add(io.pins.gpio6, 15)
+        .add(io.pins.gpio5, 17)
+        .add(io.pins.gpio4, 23)
+        .build(peripherals.ADC1);
 
     let analog_fut = produce_midi_on_analog_input_change(
         &mut adc,
@@ -77,9 +79,9 @@ async fn main(_spawner: Spawner) {
         36, 39, 41, 43, 46, 48, 43, 39, 36, 34, 31, 29, 27, 31, 33, 36,
     ];
     // time between two successive "note on" events
-    let beat_duration = Duration::from_millis(300);
+    let beat_duration = Duration::from_millis(200);
     // time betwen a "note on" and following "note off" event
-    let note_duration = Duration::from_millis(300);
+    let note_duration = Duration::from_millis(100);
 
     let seq_fut = produce_midi_for_note_sequence(&melody, beat_duration, note_duration);
 
@@ -88,7 +90,7 @@ async fn main(_spawner: Spawner) {
     // `.generate()`.
     // Because it is shared between multiple tasks, i.e. the generator task and midi event handling
     // task, we have to shield it from concurrent use with a mutex.
-    let synth = Mutex::<NoopRawMutex, _>::new(SimpleVoice::new());
+    let synth = Mutex::<NoopRawMutex, _>::new(Voice::new());
 
     // This task calls the `.handle_midi` method of `synth` when it receives a new event on
     // `MIDI_EVENTS`.
@@ -118,14 +120,15 @@ async fn main(_spawner: Spawner) {
             // [ W W W W W W W W W W W W W W W W S S S S ]
             //                                   ^ written
             let written = i2s::push(&mut transfer, &buffer).await;
-
+    
             // [ S S S S _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ]
             //           ^ start
             buffer.rotate_left(written);
-            start = (buffer.len() - written) % buffer.len();
+            start = buffer.len() - written;
         }
     };
 
     // All futures need to be awaited in order for the tasks to run.
-    join4(midi_fut, gen_fut, analog_fut, seq_fut).await;
+    join::join4(midi_fut, gen_fut, analog_fut, seq_fut).await;
+    // join::join3(seq_fut, midi_fut, gen_fut).await;
 }

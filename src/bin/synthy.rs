@@ -60,10 +60,10 @@ async fn main(_spawner: Spawner) {
         sustain_threshold: 8,
     };
     let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(analog_input_config)
-        .add(io.pins.gpio7, 18)
-        .add(io.pins.gpio6, 19)
-        .add(io.pins.gpio5, 20)
-        .add(io.pins.gpio4, 21)
+        .add(io.pins.gpio7, 14)
+        .add(io.pins.gpio6, 15)
+        .add(io.pins.gpio5, 17)
+        .add(io.pins.gpio4, 23)
         .build(peripherals.ADC1);
 
     let analog_fut = produce_midi_on_analog_input_change(

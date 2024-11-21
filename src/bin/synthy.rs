@@ -79,9 +79,9 @@ async fn main(_spawner: Spawner) {
         36, 39, 41, 43, 46, 48, 43, 39, 36, 34, 31, 29, 27, 31, 33, 36,
     ];
     // time between two successive "note on" events
-    let beat_duration = Duration::from_millis(300);
+    let beat_duration = Duration::from_millis(500);
     // time betwen a "note on" and following "note off" event
-    let note_duration = Duration::from_millis(300);
+    let note_duration = Duration::from_millis(100);
 
     let seq_fut = produce_midi_for_note_sequence(&melody, beat_duration, note_duration);
 

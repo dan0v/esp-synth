@@ -38,8 +38,6 @@ async fn main(_spawner: Spawner) {
 
     println!("Booting Rust Synth");
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
-    let mut led1 = Output::new(io.pins.gpio47, Level::High);
-    let mut led2 = Output::new(io.pins.gpio48, Level::High);
 
     // I2S =============================
     // Set up DMA (direct memory access) buffers.
@@ -67,27 +65,23 @@ async fn main(_spawner: Spawner) {
     let usb = Usb::new(peripherals.USB0, io.pins.gpio20, io.pins.gpio19);
 
     // ANALOG INPUTS ========================
-    let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(AnalogInputConfig {
+    let analog_input_config = AnalogInputConfig {
         alpha: 0.8,
         trigger_threshold: 16,
         sustain_threshold: 8,
-    })
-    .add(io.pins.gpio7, 18)
-    .add(io.pins.gpio6, 19)
-    .add(io.pins.gpio5, 20)
-    .add(io.pins.gpio4, 21)
-    .build(peripherals.ADC1);
+    };
+    let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(analog_input_config)
+        .add(io.pins.gpio7, 14)
+        .add(io.pins.gpio6, 15)
+        .add(io.pins.gpio5, 17)
+        .add(io.pins.gpio4, 23)
+        .build(peripherals.ADC1);
 
     let analog_fut = produce_midi_on_analog_input_change(
         &mut adc,
         &mut analog_inputs,
         Duration::from_millis(10),
     );
-
-    // SEQUENCER ============================
-    let melody = vec![
-        36, 39, 41, 43, 46, 48, 43, 39, 36, 34, 31, 29, 27, 31, 33, 36,
-    ];
 
     // Spin up the second (APP) core with the `handle_usb` task
     let mut cpu_control = CpuControl::new(peripherals.CPU_CTRL);
@@ -97,13 +91,6 @@ async fn main(_spawner: Spawner) {
             let executor = EXECUTOR.init(Executor::new());
             executor.run(|spawner| {
                 spawner.spawn(handle_usb(usb)).ok();
-                spawner
-                    .spawn(sequencer(
-                        melody,
-                        Duration::from_millis(300),
-                        Duration::from_millis(150),
-                    ))
-                    .ok();
             });
         })
         .unwrap();
@@ -123,9 +110,6 @@ async fn main(_spawner: Spawner) {
         let mut buffer = i2s::new_chunk_buffer();
         let mut start = 0;
         loop {
-            led1.set_high();
-            led2.set_low();
-
             for sample in &mut buffer[start..] {
                 let mut voice = voice.lock().await;
                 let a = voice.generate();
@@ -133,9 +117,6 @@ async fn main(_spawner: Spawner) {
                 *sample = [b, b];
                 drop(voice);
             }
-
-            led1.set_low();
-            led2.set_high();
 
             // W: written, S: skipped
             // [ W W W W W W W W W W W W W W W W S S S S ]

@@ -84,11 +84,6 @@ async fn main(_spawner: Spawner) {
         Duration::from_millis(10),
     );
 
-    // SEQUENCER ============================
-    let melody = vec![
-        36, 39, 41, 43, 46, 48, 43, 39, 36, 34, 31, 29, 27, 31, 33, 36,
-    ];
-
     // Spin up the second (APP) core with the `handle_usb` task
     let mut cpu_control = CpuControl::new(peripherals.CPU_CTRL);
     let _guard = cpu_control
@@ -97,13 +92,6 @@ async fn main(_spawner: Spawner) {
             let executor = EXECUTOR.init(Executor::new());
             executor.run(|spawner| {
                 spawner.spawn(handle_usb(usb)).ok();
-                spawner
-                    .spawn(sequencer(
-                        melody,
-                        Duration::from_millis(300),
-                        Duration::from_millis(150),
-                    ))
-                    .ok();
             });
         })
         .unwrap();

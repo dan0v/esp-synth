@@ -38,8 +38,6 @@ async fn main(_spawner: Spawner) {
 
     println!("Booting Rust Synth");
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
-    let mut led1 = Output::new(io.pins.gpio47, Level::High);
-    let mut led2 = Output::new(io.pins.gpio48, Level::High);
 
     // I2S =============================
     // Set up DMA (direct memory access) buffers.
@@ -67,16 +65,17 @@ async fn main(_spawner: Spawner) {
     let usb = Usb::new(peripherals.USB0, io.pins.gpio20, io.pins.gpio19);
 
     // ANALOG INPUTS ========================
-    let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(AnalogInputConfig {
+    let analog_input_config = AnalogInputConfig {
         alpha: 0.8,
         trigger_threshold: 16,
         sustain_threshold: 8,
-    })
-    .add(io.pins.gpio7, 18)
-    .add(io.pins.gpio6, 19)
-    .add(io.pins.gpio5, 20)
-    .add(io.pins.gpio4, 21)
-    .build(peripherals.ADC1);
+    };
+    let (mut adc, mut analog_inputs) = AnalogInputBuilder::new(analog_input_config)
+        .add(io.pins.gpio7, 14)
+        .add(io.pins.gpio6, 15)
+        .add(io.pins.gpio5, 17)
+        .add(io.pins.gpio4, 23)
+        .build(peripherals.ADC1);
 
     let analog_fut = produce_midi_on_analog_input_change(
         &mut adc,
@@ -97,13 +96,12 @@ async fn main(_spawner: Spawner) {
         .unwrap();
 
     // GEN =============================
-    let synth = Voice::new();
-    let synth = Mutex::<NoopRawMutex, _>::new(synth);
+    let voice = Mutex::<NoopRawMutex, _>::new(Voice::new());
 
     let midi_fut = async {
         loop {
             let event = MIDI_EVENTS.receive().await;
-            synth.lock().await.handle_midi(event);
+            voice.lock().await.handle_midi(event);
         }
     };
 
@@ -112,19 +110,13 @@ async fn main(_spawner: Spawner) {
         let mut buffer = i2s::new_chunk_buffer();
         let mut start = 0;
         loop {
-            led1.set_high();
-            led2.set_low();
-
             for sample in &mut buffer[start..] {
-                let mut synth = synth.lock().await;
-                let a = synth.generate();
+                let mut voice = voice.lock().await;
+                let a = voice.generate();
                 let b = (a * i16::MAX as f32) as i16 / 2;
                 *sample = [b, b];
-                drop(synth);
+                drop(voice);
             }
-
-            led1.set_low();
-            led2.set_high();
 
             // W: written, S: skipped
             // [ W W W W W W W W W W W W W W W W S S S S ]
